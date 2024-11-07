@@ -2,6 +2,7 @@ const display = document.querySelector('.screen');
 let firstNumber = null;
 let operator = null;
 let currentNumber = '';
+let operatorPending = false; // Flag to track if the operator is pending
 
 // Map the operator symbols to the ones used in the operations object
 const operatorMapping = {
@@ -29,11 +30,17 @@ function clearAll() {
   firstNumber = null;
   operator = null;
   currentNumber = '';
+  operatorPending = false; // Reset the pending operator flag
   updateDisplay();
 }
 
 function handleNumber(number) {
   console.log('Handling number:', number);
+  if (operatorPending) {
+    // If an operator was just pressed, reset the current number
+    currentNumber = '';
+    operatorPending = false;
+  }
   currentNumber += number;
   updateDisplay();
 }
@@ -50,40 +57,54 @@ function handleOperator(operatorClass) {
   console.log('Handling operator:', operatorClass);
 
   const operatorSymbol = operatorMapping[operatorClass.trim()] || operatorClass.trim();
-  
+
+  // If there's already a number and an operator, perform the operation
   if (firstNumber !== null && currentNumber !== '') {
-    const secondNumber = parseFloat(currentNumber);
+    const secondNumber = parseFloat(currentNumber); // Convert currentNumber to number
     console.log('Performing operation:', firstNumber, operatorSymbol, secondNumber);
 
-    const result = performOperation(firstNumber, secondNumber, operatorSymbol);
-    firstNumber = result;
-    currentNumber = result.toString();
+    // Perform the operation directly using the operations object
+    const result = operations[operatorSymbol](firstNumber, secondNumber);
+    firstNumber = result; // Set the result as the first number for the next operation
+    currentNumber = result.toString(); // Update current number to display the result
+    operatorPending = true; // Flag that the operator is pending for the next number
     updateDisplay();
+  } else if (firstNumber !== null && currentNumber === '') {
+    // If an operator is pressed after a result, just change the operator
+    operator = operatorSymbol;
+    operatorPending = true; // Still waiting for the next number
   } else {
-    firstNumber = parseFloat(currentNumber);
+    // If there's no previous number, start a new calculation
+    firstNumber = parseFloat(currentNumber) || 0;
+    operator = operatorSymbol;
+    operatorPending = true;
+    currentNumber = '';
   }
-
-  operator = operatorSymbol;
-  currentNumber = '';
-}
-
-function performOperation(num1, num2, operatorSymbol) {
-  console.log('Performing operation:', num1, operatorSymbol, num2);
-  return operations[operatorSymbol](num1, num2);
 }
 
 function handleEquals() {
   console.log('Handling equals');
   if (firstNumber !== null && operator !== null && currentNumber !== '') {
-    const secondNumber = parseFloat(currentNumber);
+    const secondNumber = parseFloat(currentNumber); // Convert currentNumber to number
     console.log('Performing operation:', firstNumber, operator, secondNumber);
-    const result = performOperation(firstNumber, secondNumber, operator);
-    currentNumber = result.toString();
-    firstNumber = result; // Store the result as the first number for the next operation
+    
+    // Perform the operation directly using the operations object
+    const result = operations[operator](firstNumber, secondNumber);
+    currentNumber = result.toString(); // Update current number with the result
+    firstNumber = null; // Reset firstNumber after equals
     operator = null; // Reset operator after equals
+    operatorPending = false; // Reset pending operator flag
+    updateDisplay();
+  } else {
+    // If no valid operation, reset the calculator after equals
+    firstNumber = null;
+    operator = null;
+    currentNumber = '';
+    operatorPending = false;
     updateDisplay();
   }
 }
+
 
 const buttons = document.querySelectorAll('.button');
 buttons.forEach(button => {
@@ -103,8 +124,7 @@ buttons.forEach(button => {
     } else if (buttonText === '=') {
       handleEquals(); // Use handleEquals directly for equals
     } else {
-      const operatorClass = button.textContent; // Get the text content instead of class
-      handleOperator(operatorClass); // Pass the operator directly
+      handleOperator(buttonText); // Handle operators
     }
   });
 });
