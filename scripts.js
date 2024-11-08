@@ -2,16 +2,7 @@ const display = document.querySelector('.screen');
 let firstNumber = null;
 let operator = null;
 let currentNumber = '';
-let operatorPending = false; // Flag to track if the operator is pending
-
-// Map the operator symbols to the ones used in the operations object
-const operatorMapping = {
-  '×': '*',
-  '÷': '/',
-  '+': '+',
-  '−': '-',
-  '-': '-',
-};
+let operatorPending = false;
 
 const operations = {
   '+': (num1, num2) => num1 + num2,
@@ -30,14 +21,13 @@ function clearAll() {
   firstNumber = null;
   operator = null;
   currentNumber = '';
-  operatorPending = false; // Reset the pending operator flag
+  operatorPending = false;
   updateDisplay();
 }
 
 function handleNumber(number) {
-  console.log('Handling number:', number);
+  console.log('Number pressed:', number);
   if (operatorPending) {
-    // If an operator was just pressed, reset the current number
     currentNumber = '';
     operatorPending = false;
   }
@@ -46,72 +36,94 @@ function handleNumber(number) {
 }
 
 function handleDecimal() {
-  console.log('Handling decimal point');
+  console.log('Decimal pressed');
   if (!currentNumber.includes('.')) {
     currentNumber += '.';
     updateDisplay();
   }
 }
 
-function handleOperator(operatorClass) {
-  console.log('Handling operator:', operatorClass);
+function handleOperator(operatorSymbol) {
+  // Ensure the operator is a valid character for our operations
+  operatorSymbol = operatorSymbol.replace('−', '-');
+  console.log('Operator received:', operatorSymbol);
 
-  const operatorSymbol = operatorMapping[operatorClass.trim()] || operatorClass.trim();
+  if (operatorSymbol === '-' && (currentNumber === '' || operatorPending)) {
+    // Allow '-' to be entered as a negative sign for currentNumber
+    console.log('Treating as negative sign');
+    currentNumber = '-' + currentNumber;
+    operatorPending = false;
+    updateDisplay();
+    return;
+  }
 
-  // If there's already a number and an operator, perform the operation
   if (firstNumber !== null && currentNumber !== '') {
-    const secondNumber = parseFloat(currentNumber); // Convert currentNumber to number
-    console.log('Performing operation:', firstNumber, operatorSymbol, secondNumber);
-
-    // Perform the operation directly using the operations object
-    const result = operations[operatorSymbol](firstNumber, secondNumber);
-    firstNumber = result; // Set the result as the first number for the next operation
-    currentNumber = result.toString(); // Update current number to display the result
-    operatorPending = true; // Flag that the operator is pending for the next number
+    const secondNumber = parseFloat(currentNumber);
+    const result = operations[operator](firstNumber, secondNumber);
+    console.log(`Calculating: ${firstNumber} ${operator} ${secondNumber} = ${result}`);
+    firstNumber = parseFloat(result.toFixed(3));
+    currentNumber = firstNumber.toString();
+    operatorPending = true;
     updateDisplay();
   } else if (firstNumber !== null && currentNumber === '') {
-    // If an operator is pressed after a result, just change the operator
     operator = operatorSymbol;
-    operatorPending = true; // Still waiting for the next number
+    console.log('Updating operator without calculation:', operator);
+    operatorPending = true;
   } else {
-    // If there's no previous number, start a new calculation
     firstNumber = parseFloat(currentNumber) || 0;
     operator = operatorSymbol;
+    console.log('Setting first number and operator:', firstNumber, operator);
     operatorPending = true;
     currentNumber = '';
   }
 }
 
 function handleEquals() {
-  console.log('Handling equals');
+  console.log('Equals pressed');
   if (firstNumber !== null && operator !== null && currentNumber !== '') {
-    const secondNumber = parseFloat(currentNumber); // Convert currentNumber to number
-    console.log('Performing operation:', firstNumber, operator, secondNumber);
-    
-    // Perform the operation directly using the operations object
+    const secondNumber = parseFloat(currentNumber);
+    console.log(`Performing operation: ${firstNumber} ${operator} ${secondNumber}`);
     const result = operations[operator](firstNumber, secondNumber);
-    currentNumber = result.toString(); // Update current number with the result
-    firstNumber = null; // Reset firstNumber after equals
-    operator = null; // Reset operator after equals
-    operatorPending = false; // Reset pending operator flag
-    updateDisplay();
-  } else {
-    // If no valid operation, reset the calculator after equals
+    currentNumber = parseFloat(result.toFixed(3)).toString();
+    console.log('Result:', currentNumber);
     firstNumber = null;
     operator = null;
-    currentNumber = '';
     operatorPending = false;
     updateDisplay();
+  } else {
+    console.log('Incomplete expression, clearing all');
+    clearAll();
   }
 }
 
+function handleBackspace() {
+  console.log('Backspace pressed');
+  currentNumber = currentNumber.slice(0, -1);
+  if (currentNumber === '') currentNumber = '0';
+  updateDisplay();
+}
+
+window.addEventListener('keydown', (e) => {
+  console.log('Key pressed:', e.key);
+  if (e.key >= '0' && e.key <= '9') {
+    handleNumber(e.key);
+  } else if (e.key === '.') {
+    handleDecimal();
+  } else if (['+', '-', '*', '/'].includes(e.key)) {
+    handleOperator(e.key);
+  } else if (e.key === 'Enter' || e.key === '=') {
+    handleEquals();
+  } else if (e.key === 'Backspace') {
+    handleBackspace();
+  } else if (e.key === 'Escape') {
+    clearAll();
+  }
+});
 
 const buttons = document.querySelectorAll('.button');
 buttons.forEach(button => {
   button.addEventListener('click', () => {
     const buttonText = button.textContent;
-    console.log('Button clicked:', buttonText);
-
     if (buttonText >= '0' && buttonText <= '9') {
       handleNumber(buttonText);
     } else if (buttonText === '.') {
@@ -122,9 +134,11 @@ buttons.forEach(button => {
     } else if (buttonText === 'CA') {
       clearAll();
     } else if (buttonText === '=') {
-      handleEquals(); // Use handleEquals directly for equals
+      handleEquals();
+    } else if (buttonText === '←') {
+      handleBackspace();
     } else {
-      handleOperator(buttonText); // Handle operators
+      handleOperator(buttonText);
     }
   });
 });
